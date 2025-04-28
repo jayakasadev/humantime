@@ -1,8 +1,8 @@
-use std::fmt;
-use std::ops::Deref;
-use std::str::FromStr;
-use std::time::{Duration as StdDuration, SystemTime};
-
+use core::fmt;
+use core::ops::Deref;
+use core::str::FromStr;
+use core::time::{Duration as CoreDuration};
+use time::OffsetDateTime;
 use crate::date::{self, format_rfc3339, parse_rfc3339_weak};
 use crate::duration::{self, format_duration, parse_duration};
 
@@ -23,7 +23,7 @@ use crate::duration::{self, format_duration, parse_duration};
 /// ```
 ///
 #[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Hash, Default)]
-pub struct Duration(StdDuration);
+pub struct Duration(CoreDuration);
 
 /// A wrapper for SystemTime that has `FromStr` implementation
 ///
@@ -37,36 +37,36 @@ pub struct Duration(StdDuration);
 /// # Example
 ///
 /// ```
-/// use std::time::SystemTime;
-/// let x: SystemTime;
+/// use time::OffsetDateTime;
+/// let x: OffsetDateTime;
 /// x = "2018-02-16T00:31:37Z".parse::<humantime::Timestamp>().unwrap().into();
 /// assert_eq!(humantime::format_rfc3339(x).to_string(), "2018-02-16T00:31:37Z");
 /// ```
 ///
 #[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Timestamp(SystemTime);
+pub struct Timestamp(OffsetDateTime);
 
-impl AsRef<StdDuration> for Duration {
-    fn as_ref(&self) -> &StdDuration {
+impl AsRef<CoreDuration> for Duration {
+    fn as_ref(&self) -> &CoreDuration {
         &self.0
     }
 }
 
 impl Deref for Duration {
-    type Target = StdDuration;
-    fn deref(&self) -> &StdDuration {
+    type Target = CoreDuration;
+    fn deref(&self) -> &CoreDuration {
         &self.0
     }
 }
 
-impl From<Duration> for StdDuration {
+impl From<Duration> for CoreDuration {
     fn from(val: Duration) -> Self {
         val.0
     }
 }
 
-impl From<StdDuration> for Duration {
-    fn from(dur: StdDuration) -> Duration {
+impl From<CoreDuration> for Duration {
+    fn from(dur: CoreDuration) -> Duration {
         Duration(dur)
     }
 }
@@ -84,27 +84,27 @@ impl fmt::Display for Duration {
     }
 }
 
-impl AsRef<SystemTime> for Timestamp {
-    fn as_ref(&self) -> &SystemTime {
+impl AsRef<OffsetDateTime> for Timestamp {
+    fn as_ref(&self) -> &OffsetDateTime {
         &self.0
     }
 }
 
 impl Deref for Timestamp {
-    type Target = SystemTime;
-    fn deref(&self) -> &SystemTime {
+    type Target = OffsetDateTime;
+    fn deref(&self) -> &OffsetDateTime {
         &self.0
     }
 }
 
-impl From<Timestamp> for SystemTime {
+impl From<Timestamp> for OffsetDateTime {
     fn from(val: Timestamp) -> Self {
         val.0
     }
 }
 
-impl From<SystemTime> for Timestamp {
-    fn from(dur: SystemTime) -> Timestamp {
+impl From<OffsetDateTime> for Timestamp {
+    fn from(dur: OffsetDateTime) -> Timestamp {
         Timestamp(dur)
     }
 }

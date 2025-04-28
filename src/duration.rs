@@ -1,7 +1,8 @@
-use std::error::Error as StdError;
-use std::fmt;
-use std::str::Chars;
-use std::time::Duration;
+use alloc::string::{String, ToString};
+use core::error::Error as StdError;
+use core::fmt;
+use core::str::Chars;
+use core::time::Duration;
 
 /// Error parsing human-friendly duration
 #[derive(Debug, PartialEq, Clone)]
@@ -329,7 +330,8 @@ impl fmt::Display for FormattedDuration {
 
 #[cfg(test)]
 mod test {
-    use std::time::Duration;
+    use alloc::string::ToString;
+    use core::time::Duration;
 
     use rand::Rng;
 

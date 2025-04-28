@@ -15,8 +15,10 @@
 //! [serde-humantime]: https://docs.rs/serde-humantime/0.1.1/serde_humantime/
 //! [humantime-serde]: https://docs.rs/humantime-serde
 
+#![no_std]
 #![forbid(unsafe_code)]
 #![warn(missing_debug_implementations, missing_docs, unreachable_pub)]
+extern crate alloc;
 
 mod date;
 mod duration;
