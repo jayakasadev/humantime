@@ -376,7 +376,7 @@ mod test {
     use alloc::string::{String, ToString};
     use core::str::from_utf8;
     use core::time::Duration;
-    use chrono::{DateTime, Local, SecondsFormat, Utc};
+    use chrono::{DateTime, SecondsFormat, Utc};
     use rand::Rng;
 
     use super::format_rfc3339_nanos;
@@ -552,9 +552,8 @@ mod test {
 
     #[test]
     fn random_past() {
-        let upper = Local::now()
-            .to_utc()
-            .timestamp();
+        let dt = DateTime::UNIX_EPOCH + Duration::new(rand::rng().random_range(0..123_000_000), 0);
+        let upper = dt.timestamp();
         for _ in 0..10000 {
             let sec = rand::rng().random_range(0..upper);
             let (s, time) = from_sec(sec as u64);

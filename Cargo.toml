@@ -15,7 +15,7 @@ categories = ["date-and-time"]
 mu = []
 
 [dependencies]
-chrono = "0.4"
+chrono = {version = "0.4", default-features = false, features = ["alloc"]}
 
 [dev-dependencies]
 bencher = "0.1.5"

@@ -5,7 +5,7 @@ use std::io::Write;
 use core::time::Duration;
 
 use bencher::Bencher;
-use chrono::{DateTime, Utc};
+use chrono::DateTime;
 use humantime::format_rfc3339;
 
 fn rfc3339_humantime_seconds(b: &mut Bencher) {
@@ -24,7 +24,7 @@ fn rfc3339_chrono(b: &mut Bencher) {
     use chrono::format::Numeric::*;
     use chrono::format::Pad::*;
 
-    let time = DateTime::<Utc>::from_timestamp(1_483_228_799, 0).unwrap();
+    let time = DateTime::from_timestamp(1_483_228_799, 0).unwrap();
     let mut buf = Vec::with_capacity(100);
 
     // formatting code from env_logger
