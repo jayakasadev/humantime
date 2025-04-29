@@ -2,7 +2,7 @@ use core::fmt;
 use core::ops::Deref;
 use core::str::FromStr;
 use core::time::{Duration as CoreDuration};
-use time::OffsetDateTime;
+use chrono::{DateTime, TimeZone, Utc};
 use crate::date::{self, format_rfc3339, parse_rfc3339_weak};
 use crate::duration::{self, format_duration, parse_duration};
 
@@ -37,14 +37,14 @@ pub struct Duration(CoreDuration);
 /// # Example
 ///
 /// ```
-/// use time::OffsetDateTime;
-/// let x: OffsetDateTime;
-/// x = "2018-02-16T00:31:37Z".parse::<humantime::Timestamp>().unwrap().into();
+/// use chrono::{DateTime, Utc};
+/// let x: DateTime<Utc>;
+/// x = "2018-02-16T00:31:37Z".parse::<DateTime<Utc>>().unwrap().into();
 /// assert_eq!(humantime::format_rfc3339(x).to_string(), "2018-02-16T00:31:37Z");
 /// ```
 ///
-#[derive(Debug, Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
-pub struct Timestamp(OffsetDateTime);
+#[derive(Debug, Clone, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Timestamp<Tz: TimeZone>(DateTime<Tz>);
 
 impl AsRef<CoreDuration> for Duration {
     fn as_ref(&self) -> &CoreDuration {
@@ -84,40 +84,40 @@ impl fmt::Display for Duration {
     }
 }
 
-impl AsRef<OffsetDateTime> for Timestamp {
-    fn as_ref(&self) -> &OffsetDateTime {
+impl <Tz: TimeZone> AsRef<DateTime<Tz>> for Timestamp<Tz> {
+    fn as_ref(&self) -> &DateTime<Tz> {
         &self.0
     }
 }
 
-impl Deref for Timestamp {
-    type Target = OffsetDateTime;
-    fn deref(&self) -> &OffsetDateTime {
+impl <Tz: TimeZone> Deref for Timestamp<Tz> {
+    type Target = DateTime<Tz>;
+    fn deref(&self) -> &DateTime<Tz> {
         &self.0
     }
 }
 
-impl From<Timestamp> for OffsetDateTime {
-    fn from(val: Timestamp) -> Self {
+impl <Tz: TimeZone> From<Timestamp<Tz>> for DateTime<Tz> {
+    fn from(val: Timestamp<Tz>) -> Self {
         val.0
     }
 }
 
-impl From<OffsetDateTime> for Timestamp {
-    fn from(dur: OffsetDateTime) -> Timestamp {
+impl <Tz: TimeZone> From<DateTime<Tz>> for Timestamp<Tz> {
+    fn from(dur: DateTime<Tz>) -> Timestamp<Tz> {
         Timestamp(dur)
     }
 }
 
-impl FromStr for Timestamp {
+impl FromStr for Timestamp<Utc> {
     type Err = date::Error;
-    fn from_str(s: &str) -> Result<Timestamp, Self::Err> {
+    fn from_str(s: &str) -> Result<Timestamp<Utc>, Self::Err> {
         parse_rfc3339_weak(s).map(Timestamp)
     }
 }
 
-impl fmt::Display for Timestamp {
+impl <Tz: TimeZone> fmt::Display for Timestamp<Tz> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        format_rfc3339(self.0).fmt(f)
+        format_rfc3339(self.0.clone()).fmt(f)
     }
 }

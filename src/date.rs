@@ -2,7 +2,7 @@ use core::error::Error as StdError;
 use core::fmt;
 use core::str;
 use core::time::Duration;
-use time::OffsetDateTime;
+use chrono::{DateTime, TimeZone, Timelike, Utc};
 
 #[cfg(all(
     target_pointer_width = "32",
@@ -60,7 +60,7 @@ enum Precision {
 
 /// A wrapper type that allows you to Display a SystemTime
 #[derive(Debug, Clone)]
-pub struct Rfc3339Timestamp(OffsetDateTime, Precision);
+pub struct Rfc3339Timestamp<Tz: TimeZone>(DateTime<Tz>, Precision);
 
 #[inline]
 /// Converts two digits given in ASCII to its proper decimal representation.
@@ -81,7 +81,7 @@ fn two_digits(b1: u8, b2: u8) -> Result<u64, Error> {
 /// digits `2018-02-14T00:28:07.133Z`.
 ///
 /// Unsupported feature: localized timestamps. Only UTC is supported.
-pub fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, Error> {
+pub fn parse_rfc3339(s: &str) -> Result<DateTime<Utc>, Error> {
     if s.len() < "2018-02-14T00:28:07Z".len() {
         return Err(Error::InvalidFormat);
     }
@@ -105,7 +105,7 @@ pub fn parse_rfc3339(s: &str) -> Result<OffsetDateTime, Error> {
 ///
 /// This function is intended to use for parsing human input. Whereas
 /// `parse_rfc3339` is for strings generated programmatically.
-pub fn parse_rfc3339_weak(s: &str) -> Result<OffsetDateTime, Error> {
+pub fn parse_rfc3339_weak(s: &str) -> Result<DateTime<Utc>, Error> {
     if s.len() < "2018-02-14T00:28:07".len() {
         return Err(Error::InvalidFormat);
     }
@@ -188,7 +188,7 @@ pub fn parse_rfc3339_weak(s: &str) -> Result<OffsetDateTime, Error> {
         return Err(Error::OutOfRange);
     }
 
-    Ok(OffsetDateTime::UNIX_EPOCH + Duration::new(total_seconds, nanos))
+    Ok(DateTime::UNIX_EPOCH + Duration::new(total_seconds, nanos))
 }
 
 fn is_leap_year(y: u64) -> bool {
@@ -202,7 +202,7 @@ fn is_leap_year(y: u64) -> bool {
 /// they are.
 ///
 /// The value is always UTC and ignores system timezone.
-pub fn format_rfc3339(system_time: OffsetDateTime) -> Rfc3339Timestamp {
+pub fn format_rfc3339<Tz: TimeZone>(system_time: DateTime<Tz>) -> Rfc3339Timestamp<Tz> {
     Rfc3339Timestamp(system_time, Precision::Smart)
 }
 
@@ -211,7 +211,7 @@ pub fn format_rfc3339(system_time: OffsetDateTime) -> Rfc3339Timestamp {
 /// This format always shows timestamp without fractional seconds.
 ///
 /// The value is always UTC and ignores system timezone.
-pub fn format_rfc3339_seconds(system_time: OffsetDateTime) -> Rfc3339Timestamp {
+pub fn format_rfc3339_seconds<Tz: TimeZone>(system_time: DateTime<Tz>) -> Rfc3339Timestamp<Tz> {
     Rfc3339Timestamp(system_time, Precision::Seconds)
 }
 
@@ -220,7 +220,7 @@ pub fn format_rfc3339_seconds(system_time: OffsetDateTime) -> Rfc3339Timestamp {
 /// This format always shows milliseconds even if millisecond value is zero.
 ///
 /// The value is always UTC and ignores system timezone.
-pub fn format_rfc3339_millis(system_time: OffsetDateTime) -> Rfc3339Timestamp {
+pub fn format_rfc3339_millis<Tz: TimeZone>(system_time: DateTime<Tz>) -> Rfc3339Timestamp<Tz> {
     Rfc3339Timestamp(system_time, Precision::Millis)
 }
 
@@ -229,7 +229,7 @@ pub fn format_rfc3339_millis(system_time: OffsetDateTime) -> Rfc3339Timestamp {
 /// This format always shows microseconds even if microsecond value is zero.
 ///
 /// The value is always UTC and ignores system timezone.
-pub fn format_rfc3339_micros(system_time: OffsetDateTime) -> Rfc3339Timestamp {
+pub fn format_rfc3339_micros<Tz: TimeZone>(system_time: DateTime<Tz>) -> Rfc3339Timestamp<Tz> {
     Rfc3339Timestamp(system_time, Precision::Micros)
 }
 
@@ -238,23 +238,23 @@ pub fn format_rfc3339_micros(system_time: OffsetDateTime) -> Rfc3339Timestamp {
 /// This format always shows nanoseconds even if nanosecond value is zero.
 ///
 /// The value is always UTC and ignores system timezone.
-pub fn format_rfc3339_nanos(system_time: OffsetDateTime) -> Rfc3339Timestamp {
+pub fn format_rfc3339_nanos<Tz: TimeZone>(system_time: DateTime<Tz>) -> Rfc3339Timestamp<Tz> {
     Rfc3339Timestamp(system_time, Precision::Nanos)
 }
 
-impl Rfc3339Timestamp {
+impl <Tz: TimeZone> Rfc3339Timestamp<Tz> {
     /// Returns a reference to the [`SystemTime`][] that is being formatted.
-    pub fn get_ref(&self) -> &OffsetDateTime {
+    pub fn get_ref(&self) -> &DateTime<Tz> {
         &self.0
     }
 }
 
-impl fmt::Display for Rfc3339Timestamp {
+impl <Tz: TimeZone> fmt::Display for Rfc3339Timestamp<Tz> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use self::Precision::*;
 
-        let dur = self.0;
-        let secs_since_epoch = dur.unix_timestamp();
+        let dur = self.0.clone();
+        let secs_since_epoch = dur.timestamp();
         let nanos = dur.nanosecond();
 
         if secs_since_epoch >= 253_402_300_800 {
@@ -268,7 +268,7 @@ impl fmt::Display for Rfc3339Timestamp {
         const DAYS_PER_100Y: i64 = 365 * 100 + 24;
         const DAYS_PER_4Y: i64 = 365 * 4 + 1;
 
-        let days = (secs_since_epoch / 86400) as i64 - LEAPOCH;
+        let days = (secs_since_epoch / 86400) - LEAPOCH;
         let secs_of_day = secs_since_epoch % 86400;
 
         let mut qc_cycles = days / DAYS_PER_400Y;
@@ -376,22 +376,19 @@ mod test {
     use alloc::string::{String, ToString};
     use core::str::from_utf8;
     use core::time::Duration;
-
+    use chrono::{DateTime, Local, SecondsFormat, Utc};
     use rand::Rng;
-    use time::format_description::well_known::Rfc3339;
-    use time::{OffsetDateTime, UtcDateTime};
 
     use super::format_rfc3339_nanos;
     use super::max;
     use super::{format_rfc3339, parse_rfc3339, parse_rfc3339_weak};
     use super::{format_rfc3339_micros, format_rfc3339_millis};
 
-    fn from_sec(sec: u64) -> (String, OffsetDateTime) {
-        let s = UtcDateTime::from_unix_timestamp(sec as i64)
+    fn from_sec(sec: u64) -> (String, DateTime<Utc>) {
+        let s = DateTime::from_timestamp(sec as i64, 0)
             .unwrap()
-            .format(&Rfc3339)
-            .unwrap();
-        let time = OffsetDateTime::UNIX_EPOCH + Duration::new(sec, 0);
+            .to_rfc3339_opts(SecondsFormat::Secs, true);
+        let time = DateTime::UNIX_EPOCH + Duration::new(sec, 0);
         (s, time)
     }
 
@@ -413,38 +410,38 @@ mod test {
     fn smoke_tests_parse() {
         assert_eq!(
             parse_rfc3339("1970-01-01T00:00:00Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)
+            DateTime::UNIX_EPOCH + Duration::new(0, 0)
         );
         assert_eq!(
             parse_rfc3339("1970-01-01T00:00:01Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(1, 0)
+            DateTime::UNIX_EPOCH + Duration::new(1, 0)
         );
         assert_eq!(
             parse_rfc3339("2018-02-13T23:08:32Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 0)
+            DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 0)
         );
         assert_eq!(
             parse_rfc3339("2012-01-01T00:00:00Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(1_325_376_000, 0)
+            DateTime::UNIX_EPOCH + Duration::new(1_325_376_000, 0)
         );
     }
 
     #[test]
     fn smoke_tests_format() {
         assert_eq!(
-            format_rfc3339(OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
+            format_rfc3339(DateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
             "1970-01-01T00:00:00Z"
         );
         assert_eq!(
-            format_rfc3339(OffsetDateTime::UNIX_EPOCH + Duration::new(1, 0)).to_string(),
+            format_rfc3339(DateTime::UNIX_EPOCH + Duration::new(1, 0)).to_string(),
             "1970-01-01T00:00:01Z"
         );
         assert_eq!(
-            format_rfc3339(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 0)).to_string(),
+            format_rfc3339(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 0)).to_string(),
             "2018-02-13T23:08:32Z"
         );
         assert_eq!(
-            format_rfc3339(OffsetDateTime::UNIX_EPOCH + Duration::new(1_325_376_000, 0)).to_string(),
+            format_rfc3339(DateTime::UNIX_EPOCH + Duration::new(1_325_376_000, 0)).to_string(),
             "2012-01-01T00:00:00Z"
         );
     }
@@ -452,11 +449,11 @@ mod test {
     #[test]
     fn smoke_tests_format_millis() {
         assert_eq!(
-            format_rfc3339_millis(OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
+            format_rfc3339_millis(DateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
             "1970-01-01T00:00:00.000Z"
         );
         assert_eq!(
-            format_rfc3339_millis(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
+            format_rfc3339_millis(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
                 .to_string(),
             "2018-02-13T23:08:32.123Z"
         );
@@ -465,16 +462,16 @@ mod test {
     #[test]
     fn smoke_tests_format_micros() {
         assert_eq!(
-            format_rfc3339_micros(OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
+            format_rfc3339_micros(DateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
             "1970-01-01T00:00:00.000000Z"
         );
         assert_eq!(
-            format_rfc3339_micros(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
+            format_rfc3339_micros(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
                 .to_string(),
             "2018-02-13T23:08:32.123000Z"
         );
         assert_eq!(
-            format_rfc3339_micros(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 456_123_000))
+            format_rfc3339_micros(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 456_123_000))
                 .to_string(),
             "2018-02-13T23:08:32.456123Z"
         );
@@ -483,23 +480,23 @@ mod test {
     #[test]
     fn smoke_tests_format_nanos() {
         assert_eq!(
-            format_rfc3339_nanos(OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
+            format_rfc3339_nanos(DateTime::UNIX_EPOCH + Duration::new(0, 0)).to_string(),
             "1970-01-01T00:00:00.000000000Z"
         );
         assert_eq!(
-            format_rfc3339_nanos(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
+            format_rfc3339_nanos(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 123_000_000))
                 .to_string(),
             "2018-02-13T23:08:32.123000000Z"
         );
         #[cfg(not(target_os = "windows"))]
         assert_eq!(
-            format_rfc3339_nanos(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 789_456_123))
+            format_rfc3339_nanos(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 789_456_123))
                 .to_string(),
             "2018-02-13T23:08:32.789456123Z"
         );
         #[cfg(target_os = "windows")] // Not sure what is up with Windows rounding?
         assert_eq!(
-            format_rfc3339_nanos(OffsetDateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 789_456_123))
+            format_rfc3339_nanos(DateTime::UNIX_EPOCH + Duration::new(1_518_563_312, 789_456_123))
                 .to_string(),
             "2018-02-13T23:08:32.789456100Z"
         );
@@ -507,7 +504,7 @@ mod test {
 
     #[test]
     fn upper_bound() {
-        let max = OffsetDateTime::UNIX_EPOCH + Duration::new(max::SECONDS, 0);
+        let max = DateTime::UNIX_EPOCH + Duration::new(max::SECONDS, 0);
         assert_eq!(parse_rfc3339(max::TIMESTAMP).unwrap(), max);
         assert_eq!(format_rfc3339(max).to_string(), max::TIMESTAMP);
     }
@@ -516,7 +513,7 @@ mod test {
     fn leap_second() {
         assert_eq!(
             parse_rfc3339("2016-12-31T23:59:60Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(1_483_228_799, 0)
+            DateTime::UNIX_EPOCH + Duration::new(1_483_228_799, 0)
         );
     }
 
@@ -555,8 +552,9 @@ mod test {
 
     #[test]
     fn random_past() {
-        let upper = OffsetDateTime::now_utc()
-            .second();
+        let upper = Local::now()
+            .to_utc()
+            .timestamp();
         for _ in 0..10000 {
             let sec = rand::rng().random_range(0..upper);
             let (s, time) = from_sec(sec as u64);
@@ -579,10 +577,10 @@ mod test {
     fn milliseconds() {
         assert_eq!(
             parse_rfc3339("1970-01-01T00:00:00.123Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 123_000_000)
+            DateTime::UNIX_EPOCH + Duration::new(0, 123_000_000)
         );
         assert_eq!(
-            format_rfc3339(OffsetDateTime::UNIX_EPOCH + Duration::new(0, 123_000_000)).to_string(),
+            format_rfc3339(DateTime::UNIX_EPOCH + Duration::new(0, 123_000_000)).to_string(),
             "1970-01-01T00:00:00.123000000Z"
         );
     }
@@ -648,31 +646,31 @@ mod test {
     fn weak_smoke_tests() {
         assert_eq!(
             parse_rfc3339_weak("1970-01-01 00:00:00").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)
+            DateTime::UNIX_EPOCH + Duration::new(0, 0)
         );
         parse_rfc3339("1970-01-01 00:00:00").unwrap_err();
 
         assert_eq!(
             parse_rfc3339_weak("1970-01-01 00:00:00.000123").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 123_000)
+            DateTime::UNIX_EPOCH + Duration::new(0, 123_000)
         );
         parse_rfc3339("1970-01-01 00:00:00.000123").unwrap_err();
 
         assert_eq!(
             parse_rfc3339_weak("1970-01-01T00:00:00.000123").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 123_000)
+            DateTime::UNIX_EPOCH + Duration::new(0, 123_000)
         );
         parse_rfc3339("1970-01-01T00:00:00.000123").unwrap_err();
 
         assert_eq!(
             parse_rfc3339_weak("1970-01-01 00:00:00.000123Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 123_000)
+            DateTime::UNIX_EPOCH + Duration::new(0, 123_000)
         );
         parse_rfc3339("1970-01-01 00:00:00.000123Z").unwrap_err();
 
         assert_eq!(
             parse_rfc3339_weak("1970-01-01 00:00:00Z").unwrap(),
-            OffsetDateTime::UNIX_EPOCH + Duration::new(0, 0)
+            DateTime::UNIX_EPOCH + Duration::new(0, 0)
         );
         parse_rfc3339("1970-01-01 00:00:00Z").unwrap_err();
     }
