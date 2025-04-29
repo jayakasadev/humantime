@@ -2,14 +2,14 @@
 extern crate bencher;
 
 use std::io::Write;
-use std::time::{Duration, UNIX_EPOCH};
+use core::time::Duration;
 
 use bencher::Bencher;
 use chrono::{DateTime, Utc};
 use humantime::format_rfc3339;
 
 fn rfc3339_humantime_seconds(b: &mut Bencher) {
-    let time = UNIX_EPOCH + Duration::new(1_483_228_799, 0);
+    let time = DateTime::UNIX_EPOCH + Duration::new(1_483_228_799, 0);
     let mut buf = Vec::with_capacity(100);
     b.iter(|| {
         buf.truncate(0);
